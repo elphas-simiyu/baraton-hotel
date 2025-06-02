@@ -1,13 +1,10 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Wifi, Tv, Coffee, Car, Users, Bed } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import BookingDialog from './BookingDialog';
-import RoomAvailabilityInfo from './RoomAvailabilityInfo';
 
 const RoomShowcase = () => {
   const { data: rooms, isLoading } = useQuery({
@@ -54,7 +51,7 @@ const RoomShowcase = () => {
             Exceptional Accommodations
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-slide-in">
-            Choose from our thoughtfully designed rooms and suites, each offering modern amenities 
+            Browse our thoughtfully designed rooms and suites, each offering modern amenities 
             and stunning views of the surrounding landscape.
           </p>
         </div>
@@ -87,8 +84,6 @@ const RoomShowcase = () => {
                     </div>
                   </div>
                 </div>
-
-                <RoomAvailabilityInfo roomType={room.type} />
                 
                 <p className="text-gray-600 mb-4 mt-4">{room.description}</p>
                 
@@ -107,12 +102,6 @@ const RoomShowcase = () => {
                   <Coffee className="h-5 w-5 text-hotel-gold" />
                   <Car className="h-5 w-5 text-hotel-gold" />
                 </div>
-                
-                <BookingDialog room={room}>
-                  <Button className="w-full bg-hotel-navy hover:bg-hotel-charcoal text-white py-3 rounded-lg transition-all duration-300">
-                    Book Now
-                  </Button>
-                </BookingDialog>
               </CardContent>
             </Card>
           ))}
