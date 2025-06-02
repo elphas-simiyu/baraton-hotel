@@ -13,72 +13,81 @@ import {
   Coffee,
   Shield,
   Clock,
-  Users
+  Users,
+  Sparkles,
+  Shirt,
+  Plane
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const ServicesSection = () => {
-  const services = [
-    {
-      icon: Utensils,
-      title: "Fine Dining Restaurant",
-      description: "Experience exquisite cuisine prepared by our world-class chefs using locally sourced ingredients."
-    },
-    {
-      icon: Briefcase,
-      title: "Conference Facilities",
-      description: "State-of-the-art meeting rooms and conference halls equipped with modern presentation technology."
-    },
-    {
-      icon: Dumbbell,
-      title: "Fitness Center",
-      description: "24/7 access to our fully equipped gymnasium with modern exercise equipment and personal trainers."
-    },
-    {
-      icon: Waves,
-      title: "Swimming Pool",
-      description: "Relax and unwind in our heated outdoor swimming pool with panoramic views of the landscape."
-    },
-    {
-      icon: Car,
-      title: "Valet Parking",
-      description: "Complimentary valet parking service available 24/7 for all our guests' convenience."
-    },
-    {
-      icon: Wifi,
-      title: "High-Speed WiFi",
-      description: "Complimentary high-speed internet access throughout the property for business and leisure."
-    },
-    {
-      icon: Coffee,
-      title: "Coffee Lounge",
-      description: "Premium coffee and light refreshments available in our elegant lobby lounge area."
-    },
-    {
-      icon: Shield,
-      title: "24/7 Security",
-      description: "Round-the-clock security service ensuring the safety and comfort of all our guests."
-    },
-    {
-      icon: Calendar,
-      title: "Event Planning",
-      description: "Professional event coordination services for weddings, conferences, and special occasions."
-    },
-    {
-      icon: Headphones,
-      title: "Concierge Service",
-      description: "Our dedicated concierge team is available to assist with tours, transportation, and reservations."
-    },
-    {
-      icon: Clock,
-      title: "Room Service",
-      description: "24-hour room service featuring our full menu selection delivered to your room."
-    },
-    {
-      icon: Users,
-      title: "Business Center",
-      description: "Fully equipped business center with printing, scanning, and secretarial services."
+  const { data: services, isLoading } = useQuery({
+    queryKey: ['services'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('is_available', true)
+        .order('category', { ascending: true });
+      
+      if (error) throw error;
+      return data;
     }
-  ];
+  });
+
+  const getServiceIcon = (serviceName: string, category: string) => {
+    const name = serviceName.toLowerCase();
+    const cat = category.toLowerCase();
+    
+    if (name.includes('restaurant') || name.includes('dining')) return Utensils;
+    if (name.includes('fitness') || name.includes('gym')) return Dumbbell;
+    if (name.includes('wifi') || name.includes('internet')) return Wifi;
+    if (name.includes('parking') || name.includes('valet')) return Car;
+    if (name.includes('pool') || name.includes('swimming')) return Waves;
+    if (name.includes('coffee') || name.includes('lounge')) return Coffee;
+    if (name.includes('security')) return Shield;
+    if (name.includes('room service')) return Clock;
+    if (name.includes('business') || name.includes('center')) return Users;
+    if (name.includes('concierge')) return Headphones;
+    if (name.includes('event') || name.includes('planning')) return Calendar;
+    if (name.includes('spa') || name.includes('treatment')) return Sparkles;
+    if (name.includes('laundry')) return Shirt;
+    if (name.includes('airport') || name.includes('transfer')) return Plane;
+    
+    // Default icons by category
+    if (cat.includes('dining')) return Utensils;
+    if (cat.includes('fitness')) return Dumbbell;
+    if (cat.includes('business')) return Briefcase;
+    if (cat.includes('transportation')) return Car;
+    if (cat.includes('recreation')) return Waves;
+    if (cat.includes('wellness')) return Sparkles;
+    if (cat.includes('housekeeping')) return Shirt;
+    
+    return Coffee; // Default icon
+  };
+
+  if (isLoading) {
+    return (
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-hotel-navy mb-6">
+              World-Class Services
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Loading our available services...
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="bg-gray-200 animate-pulse h-48 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-white">
@@ -94,17 +103,29 @@ const ServicesSection = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {services.map((service, index) => (
-            <Card key={index} className={`text-center hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-white to-gray-50 animate-fade-in`} style={{animationDelay: `${index * 0.1}s`}}>
-              <CardContent className="p-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-hotel-gold/10 rounded-full mb-4">
-                  <service.icon className="h-8 w-8 text-hotel-gold" />
-                </div>
-                <h3 className="text-lg font-semibold text-hotel-navy mb-3">{service.title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{service.description}</p>
-              </CardContent>
-            </Card>
-          ))}
+          {services?.map((service, index) => {
+            const IconComponent = getServiceIcon(service.name, service.category);
+            
+            return (
+              <Card key={service.id} className={`text-center hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border-0 bg-gradient-to-br from-white to-gray-50 animate-fade-in`} style={{animationDelay: `${index * 0.1}s`}}>
+                <CardContent className="p-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-hotel-gold/10 rounded-full mb-4">
+                    <IconComponent className="h-8 w-8 text-hotel-gold" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-hotel-navy mb-3">{service.name}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed mb-3">{service.description}</p>
+                  {service.price && (
+                    <p className="text-hotel-gold font-semibold">
+                      KSh {(service.price / 100).toLocaleString()}
+                    </p>
+                  )}
+                  {!service.price && (
+                    <p className="text-green-600 font-semibold">Complimentary</p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
         
         {/* Special Features Section */}
