@@ -7,6 +7,7 @@ import { Wifi, Tv, Coffee, Car, Users, Bed } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import BookingDialog from './BookingDialog';
+import RoomAvailabilityInfo from './RoomAvailabilityInfo';
 
 const RoomShowcase = () => {
   const { data: rooms, isLoading } = useQuery({
@@ -86,8 +87,10 @@ const RoomShowcase = () => {
                     </div>
                   </div>
                 </div>
+
+                <RoomAvailabilityInfo roomType={room.type} />
                 
-                <p className="text-gray-600 mb-4">{room.description}</p>
+                <p className="text-gray-600 mb-4 mt-4">{room.description}</p>
                 
                 <div className="grid grid-cols-2 gap-2 mb-6">
                   {room.amenities?.slice(0, 4).map((amenity, i) => (
