@@ -4,9 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Users, Home } from 'lucide-react';
+import { Database } from '@/integrations/supabase/types';
+
+type RoomType = Database['public']['Enums']['room_type'];
 
 interface RoomAvailabilityInfoProps {
-  roomType: string;
+  roomType: RoomType;
 }
 
 const RoomAvailabilityInfo = ({ roomType }: RoomAvailabilityInfoProps) => {
