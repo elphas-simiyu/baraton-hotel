@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Navigation = () => {
@@ -53,6 +53,12 @@ const Navigation = () => {
             >
               Contact
             </button>
+            <Link to="/bookings">
+              <Button variant="outline" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                My Bookings
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -92,6 +98,12 @@ const Navigation = () => {
               >
                 Contact
               </button>
+              <Link to="/bookings" className="block">
+                <Button variant="outline" className="flex items-center gap-2 w-full justify-start">
+                  <Calendar className="h-4 w-4" />
+                  My Bookings
+                </Button>
+              </Link>
             </div>
           </div>
         )}
