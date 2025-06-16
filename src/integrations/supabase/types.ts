@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string | null
+          password_hash: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name?: string | null
+          password_hash: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string | null
+          password_hash?: string
+        }
+        Relationships: []
+      }
       booking_services: {
         Row: {
           booking_id: string
@@ -98,6 +122,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_occupancy"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_room_id_fkey"
             columns: ["room_id"]
@@ -226,9 +257,50 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          last_activity: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          last_activity?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          last_activity?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      booking_analytics: {
+        Row: {
+          average_booking_value: number | null
+          month: string | null
+          total_bookings: number | null
+          total_revenue: number | null
+          unique_guests: number | null
+        }
+        Relationships: []
+      }
+      room_occupancy: {
+        Row: {
+          avg_stay_duration: number | null
+          id: string | null
+          name: string | null
+          total_bookings: number | null
+          total_revenue: number | null
+          type: Database["public"]["Enums"]["room_type"] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Calendar } from 'lucide-react';
+import { Menu, X, Calendar, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ContinueWithEmailButton from './ContinueWithEmailButton';
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -53,10 +54,17 @@ const Navigation = () => {
             >
               Contact
             </button>
+            <ContinueWithEmailButton />
             <Link to="/bookings">
               <Button variant="outline" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 My Bookings
+              </Button>
+            </Link>
+            <Link to="/admin">
+              <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Admin
               </Button>
             </Link>
           </div>
@@ -98,10 +106,19 @@ const Navigation = () => {
               >
                 Contact
               </button>
+              <div className="pt-2">
+                <ContinueWithEmailButton />
+              </div>
               <Link to="/bookings" className="block">
                 <Button variant="outline" className="flex items-center gap-2 w-full justify-start">
                   <Calendar className="h-4 w-4" />
                   My Bookings
+                </Button>
+              </Link>
+              <Link to="/admin" className="block">
+                <Button variant="ghost" className="flex items-center gap-2 w-full justify-start">
+                  <Settings className="h-4 w-4" />
+                  Admin
                 </Button>
               </Link>
             </div>
