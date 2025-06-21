@@ -9,7 +9,7 @@ import { CalendarDays, Users, Mail, Phone, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Tables } from '@/integrations/supabase/types';
-import PaymentMethodSelector from './PaymentMethodSelector';
+import PaystackPayment from './PaystackPayment';
 import RoomAvailabilityCalendar from './RoomAvailabilityCalendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -33,8 +33,7 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
     guestName: '',
     guestEmail: '',
     guestPhone: '',
-    specialRequests: '',
-    paymentMethod: 'card'
+    specialRequests: ''
   });
 
   const calculateNights = () => {
@@ -43,15 +42,20 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
     return Math.ceil(timeDiff / (1000 * 3600 * 24));
   };
 
-  const calculateTotal = () => {
-    const nights = calculateNights();
-    return nights * room.price_per_night;
+  // Convert KSh to NGN (assuming 1 KSh = 3 NGN for this example)
+  const convertToNaira = (kshAmount: number) => {
+    return Math.round(kshAmount * 3); // Convert KSh to NGN
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const calculateTotal = () => {
+    const nights = calculateNights();
+    const kshTotal = nights * room.price_per_night;
+    return convertToNaira(kshTotal); // Return in NGN kobo (smallest unit)
+  };
 
+  const handleBookingSuccess = async () => {
+    setIsLoading(true);
+    
     try {
       const totalAmount = calculateTotal();
       
@@ -67,7 +71,7 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
           guest_email: formData.guestEmail,
           guest_phone: formData.guestPhone,
           special_requests: formData.specialRequests || null,
-          status: 'pending'
+          status: 'confirmed' // Set as confirmed after payment
         })
         .select()
         .single();
@@ -80,12 +84,13 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
         .insert({
           booking_id: data.id,
           amount: totalAmount,
-          status: formData.paymentMethod === 'cash' ? 'pending' : 'pending'
+          status: 'completed',
+          currency: 'ngn'
         });
 
       toast({
-        title: "Booking Submitted!",
-        description: `Your booking request has been submitted successfully. Payment method: ${formData.paymentMethod === 'mpesa' ? 'M-Pesa' : formData.paymentMethod === 'card' ? 'Card' : 'Cash on Arrival'}. We'll contact you soon to confirm.`,
+        title: "Booking Confirmed!",
+        description: "Your booking has been confirmed and payment processed successfully.",
       });
 
       setIsOpen(false);
@@ -94,8 +99,7 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
         guestName: '',
         guestEmail: '',
         guestPhone: '',
-        specialRequests: '',
-        paymentMethod: 'card'
+        specialRequests: ''
       });
       setCheckInDate(undefined);
       setCheckOutDate(undefined);
@@ -103,8 +107,8 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
     } catch (error) {
       console.error('Error creating booking:', error);
       toast({
-        title: "Booking Failed",
-        description: "There was an error submitting your booking. Please try again.",
+        title: "Booking Error",
+        description: "There was an error processing your booking. Please contact support.",
         variant: "destructive",
       });
     } finally {
@@ -120,6 +124,17 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
            calculateNights() > 0;
   };
 
+  const bookingData = {
+    roomName: room.name,
+    guestName: formData.guestName,
+    guestEmail: formData.guestEmail,
+    guestPhone: formData.guestPhone,
+    checkInDate: checkInDate?.toISOString().split('T')[0],
+    checkOutDate: checkOutDate?.toISOString().split('T')[0],
+    guests: formData.guests,
+    specialRequests: formData.specialRequests
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -132,7 +147,7 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -258,11 +273,6 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
             </div>
 
             <div className="space-y-4">
-              <PaymentMethodSelector
-                value={formData.paymentMethod}
-                onChange={(value) => setFormData({...formData, paymentMethod: value})}
-              />
-
               {calculateNights() > 0 && (
                 <div className="bg-hotel-cream p-4 rounded-lg">
                   <h4 className="font-semibold text-hotel-navy mb-2">Booking Summary</h4>
@@ -279,31 +289,26 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
                       <span>Rate per night:</span>
                       <span>KSh {(room.price_per_night / 100).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Payment Method:</span>
-                      <span className="capitalize">
-                        {formData.paymentMethod === 'mpesa' ? 'M-Pesa' : 
-                         formData.paymentMethod === 'card' ? 'Card' : 'Cash on Arrival'}
-                      </span>
-                    </div>
                     <div className="flex justify-between font-semibold border-t pt-1">
-                      <span>Total:</span>
-                      <span>KSh {(calculateTotal() / 100).toLocaleString()}</span>
+                      <span>Total (NGN):</span>
+                      <span>₦{(calculateTotal() / 100).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
               )}
+
+              {isFormValid() && (
+                <PaystackPayment
+                  amount={calculateTotal()}
+                  email={formData.guestEmail}
+                  bookingData={bookingData}
+                  onSuccess={handleBookingSuccess}
+                  disabled={isLoading}
+                />
+              )}
             </div>
           </div>
-
-          <Button 
-            type="submit" 
-            className="w-full bg-hotel-navy hover:bg-hotel-charcoal"
-            disabled={!isFormValid() || isLoading}
-          >
-            {isLoading ? 'Processing...' : 'Submit Booking Request'}
-          </Button>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
