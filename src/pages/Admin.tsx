@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, DollarSign, Users, Calendar, Home, Eye, EyeOff } from 'lucide-react';
+import { Plus, DollarSign, Users, Calendar, Home, Eye, EyeOff, Trash2 } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
@@ -29,6 +28,7 @@ const Admin = () => {
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -143,9 +143,66 @@ const Admin = () => {
     }
   });
 
+  // Delete room mutation
+  const deleteRoomMutation = useMutation({
+    mutationFn: async (roomId: string) => {
+      // First check if room has any bookings
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('room_id', roomId)
+        .limit(1);
+
+      if (bookingsError) throw bookingsError;
+
+      if (bookings && bookings.length > 0) {
+        throw new Error('Cannot delete room with existing bookings');
+      }
+
+      const { error } = await supabase
+        .from('rooms')
+        .delete()
+        .eq('id', roomId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-rooms'] });
+      setDeletingRoomId(null);
+      toast({
+        title: "Success",
+        description: "Room deleted successfully!",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error deleting room:', error);
+      setDeletingRoomId(null);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete room. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleAddRoom = (e: React.FormEvent) => {
     e.preventDefault();
     addRoomMutation.mutate(newRoom);
+  };
+
+  const handleDeleteRoom = (roomId: string) => {
+    if (deletingRoomId === roomId) {
+      // Confirm deletion
+      deleteRoomMutation.mutate(roomId);
+    } else {
+      // First click - show confirmation
+      setDeletingRoomId(roomId);
+      setTimeout(() => {
+        if (deletingRoomId === roomId) {
+          setDeletingRoomId(null);
+        }
+      }, 3000); // Auto-cancel after 3 seconds
+    }
   };
 
   const totalRevenue = analytics?.reduce((sum, item) => sum + (item.total_revenue || 0), 0) || 0;
@@ -377,10 +434,26 @@ const Admin = () => {
                         <div key={room.id} className="border rounded-lg p-4">
                           <div className="flex justify-between items-start mb-2">
                             <h3 className="font-semibold">{room.name}</h3>
-                            <Badge variant={room.is_available ? "default" : "secondary"}>
-                              {room.is_available ? "Available" : "Unavailable"}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={room.is_available ? "default" : "secondary"}>
+                                {room.is_available ? "Available" : "Unavailable"}
+                              </Badge>
+                              <Button
+                                variant={deletingRoomId === room.id ? "destructive" : "outline"}
+                                size="sm"
+                                onClick={() => handleDeleteRoom(room.id)}
+                                disabled={deleteRoomMutation.isPending}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
+                          {deletingRoomId === room.id && (
+                            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                              Click delete again to confirm removal
+                            </div>
+                          )}
                           <p className="text-sm text-gray-600 mb-2">{room.description}</p>
                           <div className="text-sm space-y-1">
                             <p><strong>Type:</strong> {room.type.replace('_', ' ')}</p>
