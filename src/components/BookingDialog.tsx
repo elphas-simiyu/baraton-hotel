@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -42,15 +41,9 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
     return Math.ceil(timeDiff / (1000 * 3600 * 24));
   };
 
-  // Convert KSh to NGN (assuming 1 KSh = 3 NGN for this example)
-  const convertToNaira = (kshAmount: number) => {
-    return Math.round(kshAmount * 3); // Convert KSh to NGN
-  };
-
   const calculateTotal = () => {
     const nights = calculateNights();
-    const kshTotal = nights * room.price_per_night;
-    return convertToNaira(kshTotal); // Return in NGN kobo (smallest unit)
+    return nights * room.price_per_night; // Return in KSh cents (already in the right format)
   };
 
   const handleBookingSuccess = async () => {
@@ -85,7 +78,7 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
           booking_id: data.id,
           amount: totalAmount,
           status: 'completed',
-          currency: 'ngn'
+          currency: 'kes'
         });
 
       toast({
@@ -290,8 +283,8 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
                       <span>KSh {(room.price_per_night / 100).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-1">
-                      <span>Total (NGN):</span>
-                      <span>₦{(calculateTotal() / 100).toLocaleString()}</span>
+                      <span>Total:</span>
+                      <span>KSh {(calculateTotal() / 100).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

@@ -33,7 +33,7 @@ const PaystackPayment = ({ amount, email, bookingData, onSuccess, disabled }: Pa
       // Call our edge function to initialize Paystack payment
       const { data, error } = await supabase.functions.invoke('create-paystack-payment', {
         body: {
-          amount: amount, // Amount in kobo (already converted)
+          amount: amount, // Amount in cents (already in the right format)
           email: email,
           bookingData: {
             ...bookingData,
@@ -78,7 +78,7 @@ const PaystackPayment = ({ amount, email, bookingData, onSuccess, disabled }: Pa
           disabled={disabled || isLoading}
           className="w-full bg-green-600 hover:bg-green-700"
         >
-          {isLoading ? 'Initializing Payment...' : `Pay ₦${(amount / 100).toLocaleString()}`}
+          {isLoading ? 'Initializing Payment...' : `Pay KSh ${(amount / 100).toLocaleString()}`}
         </Button>
       </div>
     </div>

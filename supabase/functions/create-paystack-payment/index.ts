@@ -30,8 +30,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         email: email,
-        amount: amount, // Paystack expects amount in kobo (smallest currency unit)
-        currency: 'NGN',
+        amount: amount, // Paystack expects amount in cents (smallest currency unit)
+        currency: 'KES', // Changed to Kenyan Shillings
         callback_url: `${req.headers.get('origin')}/bookings`,
         metadata: {
           booking_data: JSON.stringify(bookingData),
