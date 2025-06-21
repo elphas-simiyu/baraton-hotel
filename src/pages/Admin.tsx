@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, DollarSign, Users, Calendar, Home, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Plus, DollarSign, Users, Calendar, Home, Eye, EyeOff, Trash2, ArrowLeft, Upload } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import RoomEditDialog from '@/components/RoomEditDialog';
+import { Link } from 'react-router-dom';
 
 const Admin = () => {
   const [newRoom, setNewRoom] = useState({
@@ -29,12 +31,13 @@ const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Simple admin authentication (in production, use proper auth)
+  // Simple admin authentication
   const handleAdminLogin = () => {
-    if (adminPassword === 'admin123') { // Simple password for demo
+    if (adminPassword === 'admin123') {
       setIsAuthenticated(true);
       toast({
         title: "Welcome Admin",
@@ -46,6 +49,54 @@ const Admin = () => {
         description: "Invalid password. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  // Handle image upload for new rooms
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `room-${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('room-images')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('room-images')
+        .getPublicUrl(fileName);
+
+      setNewRoom(prev => ({ ...prev, image_url: publicUrl }));
+
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully!",
+      });
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -64,7 +115,7 @@ const Admin = () => {
     enabled: isAuthenticated
   });
 
-  // Fetch bookings
+  // Fetch bookings with room details
   const { data: bookings } = useQuery({
     queryKey: ['admin-bookings'],
     queryFn: async () => {
@@ -74,7 +125,9 @@ const Admin = () => {
           *,
           rooms (
             name,
-            type
+            type,
+            image_url,
+            price_per_night
           )
         `)
         .order('created_at', { ascending: false });
@@ -107,17 +160,19 @@ const Admin = () => {
         .from('rooms')
         .insert([{
           ...roomData,
-          price_per_night: parseInt(roomData.price_per_night) * 100, // Convert to cents
+          price_per_night: parseInt(roomData.price_per_night) * 100,
           capacity: parseInt(roomData.capacity),
           size_sqm: roomData.size_sqm ? parseInt(roomData.size_sqm) : null,
           amenities: roomData.amenities ? roomData.amenities.split(',').map((a: string) => a.trim()) : []
-        }]);
+        }])
+        .select();
       
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
       toast({
         title: "Success",
         description: "Room added successfully!",
@@ -143,7 +198,7 @@ const Admin = () => {
     }
   });
 
-  // Delete room mutation
+  // Delete room mutation - Fixed to properly delete
   const deleteRoomMutation = useMutation({
     mutationFn: async (roomId: string) => {
       // First check if room has any bookings
@@ -159,15 +214,19 @@ const Admin = () => {
         throw new Error('Cannot delete room with existing bookings');
       }
 
+      // Delete the room
       const { error } = await supabase
         .from('rooms')
         .delete()
         .eq('id', roomId);
       
       if (error) throw error;
+      
+      return roomId;
     },
-    onSuccess: () => {
+    onSuccess: (deletedRoomId) => {
       queryClient.invalidateQueries({ queryKey: ['admin-rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
       setDeletingRoomId(null);
       toast({
         title: "Success",
@@ -192,16 +251,12 @@ const Admin = () => {
 
   const handleDeleteRoom = (roomId: string) => {
     if (deletingRoomId === roomId) {
-      // Confirm deletion
       deleteRoomMutation.mutate(roomId);
     } else {
-      // First click - show confirmation
       setDeletingRoomId(roomId);
       setTimeout(() => {
-        if (deletingRoomId === roomId) {
-          setDeletingRoomId(null);
-        }
-      }, 3000); // Auto-cancel after 3 seconds
+        setDeletingRoomId(null);
+      }, 3000);
     }
   };
 
@@ -213,7 +268,14 @@ const Admin = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Admin Access</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Link to="/">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
+              Admin Access
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -254,7 +316,15 @@ const Admin = () => {
     <div className="min-h-screen">
       <Navigation />
       <div className="container mx-auto px-4 py-20">
-        <h1 className="text-4xl font-bold text-hotel-navy mb-8">Admin Dashboard</h1>
+        <div className="flex items-center gap-4 mb-8">
+          <Link to="/">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Home
+            </Button>
+          </Link>
+          <h1 className="text-4xl font-bold text-hotel-navy">Admin Dashboard</h1>
+        </div>
         
         {/* Analytics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -404,13 +474,31 @@ const Admin = () => {
                     </div>
                     
                     <div>
-                      <Label htmlFor="image">Image URL</Label>
-                      <Input
-                        id="image"
-                        type="url"
-                        value={newRoom.image_url}
-                        onChange={(e) => setNewRoom({...newRoom, image_url: e.target.value})}
-                      />
+                      <Label htmlFor="image">Room Image</Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={uploading}
+                            className="flex-1"
+                          />
+                          <Button type="button" disabled={uploading} variant="outline">
+                            <Upload className="h-4 w-4 mr-2" />
+                            {uploading ? 'Uploading...' : 'Upload'}
+                          </Button>
+                        </div>
+                        {newRoom.image_url && (
+                          <div className="mt-2">
+                            <img 
+                              src={newRoom.image_url} 
+                              alt="Room preview" 
+                              className="h-20 w-20 object-cover rounded border"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
                     <Button type="submit" className="w-full" disabled={addRoomMutation.isPending}>
@@ -433,11 +521,21 @@ const Admin = () => {
                       rooms?.map((room) => (
                         <div key={room.id} className="border rounded-lg p-4">
                           <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-semibold">{room.name}</h3>
+                            <div className="flex items-center gap-3">
+                              {room.image_url && (
+                                <img 
+                                  src={room.image_url} 
+                                  alt={room.name}
+                                  className="h-12 w-12 object-cover rounded"
+                                />
+                              )}
+                              <h3 className="font-semibold">{room.name}</h3>
+                            </div>
                             <div className="flex items-center gap-2">
                               <Badge variant={room.is_available ? "default" : "secondary"}>
                                 {room.is_available ? "Available" : "Unavailable"}
                               </Badge>
+                              <RoomEditDialog room={room} />
                               <Button
                                 variant={deletingRoomId === room.id ? "destructive" : "outline"}
                                 size="sm"
@@ -479,10 +577,22 @@ const Admin = () => {
                 <div className="space-y-4">
                   {bookings?.map((booking) => (
                     <div key={booking.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-semibold">{booking.guest_name}</h3>
-                          <p className="text-sm text-gray-600">{booking.guest_email}</p>
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-4">
+                          {booking.rooms?.image_url && (
+                            <img 
+                              src={booking.rooms.image_url} 
+                              alt={booking.rooms.name}
+                              className="h-16 w-16 object-cover rounded"
+                            />
+                          )}
+                          <div>
+                            <h3 className="font-semibold">{booking.guest_name}</h3>
+                            <p className="text-sm text-gray-600">{booking.guest_email}</p>
+                            {booking.guest_phone && (
+                              <p className="text-sm text-gray-600">{booking.guest_phone}</p>
+                            )}
+                          </div>
                         </div>
                         <Badge className={`${
                           booking.status === 'confirmed' ? 'bg-green-500' :
@@ -493,10 +603,11 @@ const Admin = () => {
                           {booking.status?.toUpperCase()}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                         <div>
                           <p className="text-gray-600">Room</p>
                           <p className="font-medium">{booking.rooms?.name}</p>
+                          <p className="text-xs text-gray-500">{booking.rooms?.type?.replace('_', ' ')}</p>
                         </div>
                         <div>
                           <p className="text-gray-600">Check-in</p>
@@ -507,10 +618,20 @@ const Admin = () => {
                           <p className="font-medium">{new Date(booking.check_out_date).toLocaleDateString()}</p>
                         </div>
                         <div>
+                          <p className="text-gray-600">Guests</p>
+                          <p className="font-medium">{booking.guests} guests</p>
+                        </div>
+                        <div>
                           <p className="text-gray-600">Total</p>
                           <p className="font-medium">KSh {(booking.total_amount / 100).toLocaleString()}</p>
                         </div>
                       </div>
+                      {booking.special_requests && (
+                        <div className="mt-3 p-2 bg-gray-50 rounded">
+                          <p className="text-sm text-gray-600">Special Requests:</p>
+                          <p className="text-sm">{booking.special_requests}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
