@@ -21,8 +21,6 @@ const HeroSection = () => {
             Experience luxury and comfort in the heart of Kenya's educational excellence. 
             Where hospitality meets academic distinction.
           </p>
-          
-          {/* Booking form */}
           </div>
         </div>
       </div>
