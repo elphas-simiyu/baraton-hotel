@@ -40,24 +40,7 @@ const HeroSection = () => {
                   <label className="text-sm text-gray-600">Check-out</label>
                   <Input type="date" className="border-0 p-0 text-hotel-charcoal font-medium" />
                 </div>
-              </div>
-              
-              <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg bg-white">
-                <Users className="text-hotel-gold h-5 w-5" />
-                <div>
-                  <label className="text-sm text-gray-600">Guests</label>
-                  <select className="border-0 p-0 text-hotel-charcoal font-medium bg-transparent w-full">
-                    <option>1 Guest</option>
-                    <option>2 Guests</option>
-                    <option>3 Guests</option>
-                    <option>4+ Guests</option>
-                  </select>
-                </div>
-              </div>
-              
-              <Button className="bg-hotel-gold hover:bg-hotel-gold-dark text-hotel-navy font-semibold py-6 px-8 rounded-lg transition-all duration-300 transform hover:scale-105">
-                Search Rooms
-              </Button>
+              </div> 
             </div>
           </div>
         </div>

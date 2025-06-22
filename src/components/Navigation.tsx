@@ -33,7 +33,7 @@ const Navigation = () => {
           <Link to="/" className="flex items-center space-x-3">
             <div className="w-12 h-12 flex items-center justify-center">
               <img 
-                src="/lovable-uploads/547b2b10-ce7d-4dc7-8bda-3db21d6e8ef8.png" 
+                src="/547b2b10-ce7d-4dc7-8bda-3db21d6e8ef8.png" 
                 alt="University of Eastern Africa, Baraton" 
                 className="w-12 h-12 object-contain"
               />
