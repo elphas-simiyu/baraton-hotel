@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Calendar, Settings, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import ContinueWithEmailButton from './ContinueWithEmailButton';
+// import ContinueWithEmailButton from './ContinueWithEmailButton';
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -85,7 +85,7 @@ const Navigation = () => {
               </>
             )}
             
-            <ContinueWithEmailButton />
+{/*             <ContinueWithEmailButton /> */}
             
             <Link to="/bookings">
               <Button 
