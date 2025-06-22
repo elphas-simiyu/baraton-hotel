@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Calendar, Settings, Home } from 'lucide-react';
@@ -10,14 +9,12 @@ const Navigation = () => {
   const location = useLocation();
 
   const scrollToSection = (sectionId: string) => {
-    // Only scroll if we're on the home page
     if (location.pathname === '/') {
       const element = document.getElementById(sectionId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
       }
     } else {
-      // Navigate to home page with section hash
       window.location.href = `/#${sectionId}`;
     }
     setIsMenuOpen(false);
@@ -49,25 +46,16 @@ const Navigation = () => {
                 Home
               </div>
             </Link>
-            
+
             {location.pathname === '/' ? (
               <>
-                <button 
-                  onClick={() => scrollToSection('rooms')}
-                  className="text-gray-700 hover:text-hotel-navy transition-colors"
-                >
+                <button onClick={() => scrollToSection('rooms')} className="text-gray-700 hover:text-hotel-navy transition-colors">
                   Rooms
                 </button>
-                <button 
-                  onClick={() => scrollToSection('services')}
-                  className="text-gray-700 hover:text-hotel-navy transition-colors"
-                >
+                <button onClick={() => scrollToSection('services')} className="text-gray-700 hover:text-hotel-navy transition-colors">
                   Services
                 </button>
-                <button 
-                  onClick={() => scrollToSection('contact')}
-                  className="text-gray-700 hover:text-hotel-navy transition-colors"
-                >
+                <button onClick={() => scrollToSection('contact')} className="text-gray-700 hover:text-hotel-navy transition-colors">
                   Contact
                 </button>
               </>
@@ -84,34 +72,26 @@ const Navigation = () => {
                 </Link>
               </>
             )}
-            
-{/*             <ContinueWithEmailButton /> */}
-            
+
             <Link to="/bookings">
-              <Button 
-                variant={isActive('/bookings') ? "default" : "outline"} 
-                className="flex items-center gap-2"
-              >
+              <Button variant={isActive('/bookings') ? "default" : "outline"} className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 My Bookings
               </Button>
             </Link>
-            
+
             <Link to="/admin">
-              <Button 
-                variant={isActive('/admin') ? "default" : "ghost"} 
-                size="sm" 
-                className="flex items-center gap-2"
-              >
+              <Button variant={isActive('/admin') ? "default" : "ghost"} size="sm" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Admin
               </Button>
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Toggle Button */}
           <button
             className="md:hidden"
+            aria-label="Toggle navigation menu"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -120,7 +100,7 @@ const Navigation = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
+          <div className="md:hidden py-4 border-t border-gray-200 bg-white z-50">
             <div className="flex flex-col space-y-4">
               <Link 
                 to="/" 
@@ -130,73 +110,47 @@ const Navigation = () => {
                 <Home className="h-4 w-4" />
                 Home
               </Link>
-              
+
               {location.pathname === '/' ? (
                 <>
-                  <button 
-                    onClick={() => scrollToSection('rooms')}
-                    className="text-left text-gray-700 hover:text-hotel-navy transition-colors"
-                  >
+                  <button onClick={() => scrollToSection('rooms')} className="text-left text-gray-700 hover:text-hotel-navy transition-colors">
                     Rooms
                   </button>
-                  <button 
-                    onClick={() => scrollToSection('services')}
-                    className="text-left text-gray-700 hover:text-hotel-navy transition-colors"
-                  >
+                  <button onClick={() => scrollToSection('services')} className="text-left text-gray-700 hover:text-hotel-navy transition-colors">
                     Services
                   </button>
-                  <button 
-                    onClick={() => scrollToSection('contact')}
-                    className="text-left text-gray-700 hover:text-hotel-navy transition-colors"
-                  >
+                  <button onClick={() => scrollToSection('contact')} className="text-left text-gray-700 hover:text-hotel-navy transition-colors">
                     Contact
                   </button>
                 </>
               ) : (
                 <>
-                  <Link 
-                    to="/#rooms" 
-                    className="text-left text-gray-700 hover:text-hotel-navy transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
+                  <Link to="/#rooms" className="text-left text-gray-700 hover:text-hotel-navy transition-colors" onClick={() => setIsMenuOpen(false)}>
                     Rooms
                   </Link>
-                  <Link 
-                    to="/#services" 
-                    className="text-left text-gray-700 hover:text-hotel-navy transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
+                  <Link to="/#services" className="text-left text-gray-700 hover:text-hotel-navy transition-colors" onClick={() => setIsMenuOpen(false)}>
                     Services
                   </Link>
-                  <Link 
-                    to="/#contact" 
-                    className="text-left text-gray-700 hover:text-hotel-navy transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
+                  <Link to="/#contact" className="text-left text-gray-700 hover:text-hotel-navy transition-colors" onClick={() => setIsMenuOpen(false)}>
                     Contact
                   </Link>
                 </>
               )}
-              
-              <div className="pt-2">
+
+              {/* Optional: Uncomment if the component exists */}
+              {/* <div className="pt-2">
                 <ContinueWithEmailButton />
-              </div>
-              
+              </div> */}
+
               <Link to="/bookings" className="block" onClick={() => setIsMenuOpen(false)}>
-                <Button 
-                  variant={isActive('/bookings') ? "default" : "outline"} 
-                  className="flex items-center gap-2 w-full justify-start"
-                >
+                <Button variant={isActive('/bookings') ? "default" : "outline"} className="flex items-center gap-2 w-full justify-start">
                   <Calendar className="h-4 w-4" />
                   My Bookings
                 </Button>
               </Link>
-              
+
               <Link to="/admin" className="block" onClick={() => setIsMenuOpen(false)}>
-                <Button 
-                  variant={isActive('/admin') ? "default" : "ghost"} 
-                  className="flex items-center gap-2 w-full justify-start"
-                >
+                <Button variant={isActive('/admin') ? "default" : "ghost"} className="flex items-center gap-2 w-full justify-start">
                   <Settings className="h-4 w-4" />
                   Admin
                 </Button>
