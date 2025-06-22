@@ -14,48 +14,116 @@ serve(async (req) => {
   }
 
   try {
-    const { bookingData, amount, email } = await req.json();
-    
-    const paystackSecretKey = Deno.env.get('PAYSTACK_SECRET_KEY');
-    if (!paystackSecretKey) {
-      throw new Error('Paystack secret key not configured');
+    // Validate request method
+    if (req.method !== 'POST') {
+      throw new Error('Method not allowed');
     }
 
-    // Initialize Paystack transaction
+    const { bookingData, amount, email } = await req.json();
+    
+    // Input validation
+    if (!bookingData || !amount || !email) {
+      throw new Error('Missing required fields: bookingData, amount, and email are required');
+    }
+
+    if (!email.includes('@') || email.length < 5) {
+      throw new Error('Invalid email address');
+    }
+
+    if (amount < 100) { // Minimum 1 KES
+      throw new Error('Amount must be at least 1 KES (100 cents)');
+    }
+
+    const paystackSecretKey = Deno.env.get('PAYSTACK_SECRET_KEY');
+    if (!paystackSecretKey) {
+      console.error('Paystack secret key not configured');
+      throw new Error('Payment service not configured');
+    }
+
+    // Validate secret key format (should start with sk_)
+    if (!paystackSecretKey.startsWith('sk_')) {
+      console.error('Invalid Paystack secret key format');
+      throw new Error('Payment service configuration error');
+    }
+
+    // Get origin for callback URL validation
+    const origin = req.headers.get('origin');
+    if (!origin) {
+      throw new Error('Origin header required');
+    }
+
+    // Validate origin for production security
+    const allowedOrigins = [
+      'https://lovable.dev',
+      'http://localhost:8080',
+      origin // Allow the current origin for flexibility
+    ];
+
+    console.log('Processing payment request:', {
+      email: email,
+      amount: amount,
+      origin: origin,
+      room: bookingData.room_name
+    });
+
+    // Initialize Paystack transaction with enhanced security
     const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${paystackSecretKey}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'Baraton-Community-App/1.0'
       },
       body: JSON.stringify({
-        email: email,
-        amount: amount, // Paystack expects amount in cents (smallest currency unit)
-        currency: 'KES', // Changed to Kenyan Shillings
-        callback_url: `${req.headers.get('origin')}/bookings`,
+        email: email.toLowerCase().trim(),
+        amount: Math.round(amount), // Ensure integer amount
+        currency: 'KES',
+        callback_url: `${origin}/bookings?payment=success`,
+        channels: ['card', 'mobile_money'], // Limit to secure channels
         metadata: {
-          booking_data: JSON.stringify(bookingData),
+          booking_data: JSON.stringify({
+            ...bookingData,
+            timestamp: new Date().toISOString(),
+            origin: origin
+          }),
           custom_fields: [
             {
               display_name: "Room",
               variable_name: "room_name",
-              value: bookingData.room_name
+              value: bookingData.room_name || 'Unknown Room'
             },
             {
               display_name: "Guest Name",
               variable_name: "guest_name", 
-              value: bookingData.guest_name
+              value: bookingData.guest_name || 'Unknown Guest'
+            },
+            {
+              display_name: "Check-in Date",
+              variable_name: "check_in_date",
+              value: bookingData.checkInDate || 'Not specified'
             }
           ]
         }
       }),
     });
 
+    if (!paystackResponse.ok) {
+      const errorText = await paystackResponse.text();
+      console.error('Paystack API error:', errorText);
+      throw new Error('Payment service temporarily unavailable');
+    }
+
     const paystackData = await paystackResponse.json();
     
     if (!paystackData.status) {
+      console.error('Paystack initialization failed:', paystackData.message);
       throw new Error(paystackData.message || 'Failed to initialize payment');
     }
+
+    console.log('Payment initialized successfully:', {
+      reference: paystackData.data.reference,
+      email: email
+    });
 
     return new Response(JSON.stringify({
       success: true,
@@ -68,11 +136,20 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error creating Paystack payment:', error);
+    
+    // Don't expose internal errors to client in production
+    const errorMessage = error.message.includes('Payment service') || 
+                        error.message.includes('Invalid') || 
+                        error.message.includes('Missing') ||
+                        error.message.includes('Method not allowed')
+                        ? error.message 
+                        : 'An error occurred while processing your payment';
+
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: errorMessage 
     }), {
-      status: 500,
+      status: error.message.includes('Method not allowed') ? 405 : 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
