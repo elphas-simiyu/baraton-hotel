@@ -23,25 +23,6 @@ const HeroSection = () => {
           </p>
           
           {/* Booking form */}
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl max-w-4xl mx-auto animate-fade-in">
-            <h2 className="text-2xl font-semibold text-hotel-navy mb-6">Reserve Your Stay</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg bg-white">
-                <Calendar className="text-hotel-gold h-5 w-5" />
-                <div>
-                  <label className="text-sm text-gray-600">Check-in</label>
-                  <Input type="date" className="border-0 p-0 text-hotel-charcoal font-medium" />
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg bg-white">
-                <Calendar className="text-hotel-gold h-5 w-5" />
-                <div>
-                  <label className="text-sm text-gray-600">Check-out</label>
-                  <Input type="date" className="border-0 p-0 text-hotel-charcoal font-medium" />
-                </div>
-              </div> 
-            </div>
           </div>
         </div>
       </div>
