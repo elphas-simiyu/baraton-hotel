@@ -62,6 +62,9 @@ const PaystackPayment = ({ amount, email, bookingData, onSuccess, disabled }: Pa
         room: bookingData.roomName
       });
 
+      // Get current origin for return URL
+      const origin = window.location.origin;
+
       // Call our edge function to initialize Paystack payment
       const { data, error } = await supabase.functions.invoke('create-paystack-payment', {
         body: {
@@ -70,7 +73,9 @@ const PaystackPayment = ({ amount, email, bookingData, onSuccess, disabled }: Pa
           bookingData: {
             ...bookingData,
             room_name: bookingData.roomName || 'Hotel Room'
-          }
+          },
+          callback_url: `${origin}/payment-success`,
+          cancel_url: `${origin}/`
         }
       });
 

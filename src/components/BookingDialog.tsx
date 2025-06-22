@@ -188,6 +188,7 @@ const BookingDialog = ({ room, children }: BookingDialogProps) => {
   };
 
   const bookingData = {
+    room_id: room.id, // Add room_id for database insertion
     roomName: room.name,
     guestName: formData.guestName.trim(),
     guestEmail: formData.guestEmail.toLowerCase().trim(),

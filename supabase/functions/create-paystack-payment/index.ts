@@ -1,127 +1,135 @@
 
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Validate request method
-    if (req.method !== 'POST') {
-      throw new Error('Method not allowed');
-    }
-
-    const { bookingData, amount, email } = await req.json();
+    const { amount, email, bookingData, callback_url, cancel_url } = await req.json();
+    const origin = req.headers.get('origin') || '';
     
-    // Input validation
-    if (!bookingData || !amount || !email) {
-      throw new Error('Missing required fields: bookingData, amount, and email are required');
-    }
-
-    if (!email.includes('@') || email.length < 5) {
-      throw new Error('Invalid email address');
-    }
-
-    if (amount < 100) { // Minimum 1 KES
-      throw new Error('Amount must be at least 1 KES (100 cents)');
-    }
-
-    const paystackSecretKey = Deno.env.get('PAYSTACK_SECRET_KEY');
-    if (!paystackSecretKey) {
-      console.error('Paystack secret key not configured');
-      throw new Error('Payment service not configured');
-    }
-
-    // Validate secret key format (should start with sk_)
-    if (!paystackSecretKey.startsWith('sk_')) {
-      console.error('Invalid Paystack secret key format');
-      throw new Error('Payment service configuration error');
-    }
-
-    // Get origin for callback URL validation
-    const origin = req.headers.get('origin');
-    if (!origin) {
-      throw new Error('Origin header required');
-    }
-
-    // Validate origin for production security
-    const allowedOrigins = [
-      'https://lovable.dev',
-      'http://localhost:8080',
-      origin // Allow the current origin for flexibility
-    ];
-
     console.log('Processing payment request:', {
-      email: email,
-      amount: amount,
-      origin: origin,
-      room: bookingData.room_name
+      email,
+      amount,
+      origin,
+      room: bookingData?.room_name
     });
 
-    // Initialize Paystack transaction with enhanced security
+    // Validate inputs
+    if (!amount || amount < 100) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid amount. Minimum is 100 kobo (1 KES)'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!email || !email.includes('@')) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Valid email address is required'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate origin for additional security
+    const allowedOrigins = [
+      'https://preview--baraton-oasis-booking.lovable.app',
+      'http://localhost:5173',
+      'http://localhost:3000'
+    ];
+
+    if (origin && !allowedOrigins.some(allowed => origin.includes(allowed.replace('https://', '').replace('http://', '')))) {
+      console.warn('Payment request from unrecognized origin:', origin);
+    }
+
+    const secret = Deno.env.get('PAYSTACK_SECRET_KEY');
+    if (!secret) {
+      console.error('PAYSTACK_SECRET_KEY is not configured');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Payment system configuration error'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Generate a unique reference
+    const reference = `baraton_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Prepare webhook URL
+    const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/paystack-webhook`;
+
+    // Initialize Paystack payment
     const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${paystackSecretKey}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'Baraton-Community-App/1.0'
+        'Authorization': `Bearer ${secret}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         email: email.toLowerCase().trim(),
-        amount: Math.round(amount), // Ensure integer amount
-        currency: 'KES',
-        callback_url: `${origin}/bookings?payment=success`,
-        channels: ['card', 'mobile_money'], // Limit to secure channels
+        amount: amount, // Amount in kobo
+        reference: reference,
+        callback_url: callback_url || `${origin}/payment-success`,
+        cancel_url: cancel_url || origin,
         metadata: {
-          booking_data: JSON.stringify({
+          bookingData: {
             ...bookingData,
-            timestamp: new Date().toISOString(),
-            origin: origin
-          }),
+            room_id: bookingData.room_id || null,
+            guestName: bookingData.guestName,
+            guestEmail: email.toLowerCase().trim(),
+            guestPhone: bookingData.guestPhone || null,
+            checkInDate: bookingData.checkInDate,
+            checkOutDate: bookingData.checkOutDate,
+            guests: bookingData.guests || 1,
+            specialRequests: bookingData.specialRequests || null
+          },
           custom_fields: [
             {
               display_name: "Room",
               variable_name: "room_name",
-              value: bookingData.room_name || 'Unknown Room'
+              value: bookingData.room_name || 'Hotel Room'
             },
             {
               display_name: "Guest Name",
               variable_name: "guest_name", 
-              value: bookingData.guest_name || 'Unknown Guest'
-            },
-            {
-              display_name: "Check-in Date",
-              variable_name: "check_in_date",
-              value: bookingData.checkInDate || 'Not specified'
+              value: bookingData.guestName || 'Guest'
             }
           ]
-        }
-      }),
+        },
+        channels: ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer']
+      })
     });
 
-    if (!paystackResponse.ok) {
-      const errorText = await paystackResponse.text();
-      console.error('Paystack API error:', errorText);
-      throw new Error('Payment service temporarily unavailable');
-    }
-
     const paystackData = await paystackResponse.json();
-    
-    if (!paystackData.status) {
-      console.error('Paystack initialization failed:', paystackData.message);
-      throw new Error(paystackData.message || 'Failed to initialize payment');
+
+    if (!paystackResponse.ok || !paystackData.status) {
+      console.error('Paystack initialization failed:', paystackData);
+      return new Response(JSON.stringify({
+        success: false,
+        error: paystackData.message || 'Failed to initialize payment with Paystack'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     console.log('Payment initialized successfully:', {
-      reference: paystackData.data.reference,
+      reference: reference,
       email: email
     });
 
@@ -129,28 +137,20 @@ serve(async (req) => {
       success: true,
       authorization_url: paystackData.data.authorization_url,
       access_code: paystackData.data.access_code,
-      reference: paystackData.data.reference
+      reference: reference
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Error creating Paystack payment:', error);
-    
-    // Don't expose internal errors to client in production
-    const errorMessage = error.message.includes('Payment service') || 
-                        error.message.includes('Invalid') || 
-                        error.message.includes('Missing') ||
-                        error.message.includes('Method not allowed')
-                        ? error.message 
-                        : 'An error occurred while processing your payment';
-
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: errorMessage 
+    console.error('Payment initialization error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Internal server error occurred while processing payment request'
     }), {
-      status: error.message.includes('Method not allowed') ? 405 : 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
