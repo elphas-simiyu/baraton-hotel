@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,9 +9,12 @@ import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
 const Bookings = () => {
+  const queryClient = useQueryClient();
+  
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['bookings'],
     queryFn: async () => {
+      console.log('Fetching all bookings');
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -24,10 +27,41 @@ const Bookings = () => {
         `)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching bookings:', error);
+        throw error;
+      }
+      
+      console.log('Bookings fetched:', data?.length);
       return data;
     }
   });
+
+  // Set up real-time subscription for bookings changes
+  useEffect(() => {
+    console.log('Setting up real-time subscription for bookings page');
+    
+    const channel = supabase
+      .channel('bookings-page-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('Booking change detected on bookings page:', payload);
+          queryClient.invalidateQueries({ queryKey: ['bookings'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up bookings page real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Calendar, Users, Mail, Phone, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 
@@ -12,6 +13,7 @@ const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const reference = searchParams.get('reference');
 
   useEffect(() => {
@@ -22,6 +24,8 @@ const PaymentSuccess = () => {
       }
 
       try {
+        console.log('Fetching booking details for reference:', reference);
+        
         // Find the payment record with this reference
         const { data: payment, error: paymentError } = await supabase
           .from('payments')
@@ -41,7 +45,12 @@ const PaymentSuccess = () => {
         if (paymentError) {
           console.error('Error fetching payment:', paymentError);
         } else {
+          console.log('Payment found:', payment);
           setBooking(payment?.bookings);
+          
+          // Invalidate room availability queries to trigger refetch
+          queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+          queryClient.invalidateQueries({ queryKey: ['rooms'] });
         }
       } catch (error) {
         console.error('Error:', error);
@@ -51,7 +60,7 @@ const PaymentSuccess = () => {
     };
 
     fetchBookingDetails();
-  }, [reference]);
+  }, [reference, queryClient]);
 
   if (loading) {
     return (

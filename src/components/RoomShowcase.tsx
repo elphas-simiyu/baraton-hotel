@@ -1,28 +1,63 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Wifi, Tv, Coffee, Car, Users, Bed } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import BookingDialog from './BookingDialog';
 import RoomAvailabilityInfo from './RoomAvailabilityInfo';
 
 const RoomShowcase = () => {
+  const queryClient = useQueryClient();
+  
   const { data: rooms, isLoading } = useQuery({
     queryKey: ['rooms'],
     queryFn: async () => {
+      console.log('Fetching rooms for showcase');
       const { data, error } = await supabase
         .from('rooms')
         .select('*')
         .eq('is_available', true)
         .order('price_per_night', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching rooms:', error);
+        throw error;
+      }
+      
+      console.log('Rooms fetched for showcase:', data?.length);
       return data;
     }
   });
+
+  // Set up real-time subscription for bookings changes to update room availability
+  useEffect(() => {
+    console.log('Setting up real-time subscription for room showcase');
+    
+    const channel = supabase
+      .channel('room-showcase-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('Booking change detected in room showcase:', payload);
+          queryClient.invalidateQueries({ queryKey: ['room-availability'] });
+          queryClient.invalidateQueries({ queryKey: ['rooms'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up room showcase real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   if (isLoading) {
     return (

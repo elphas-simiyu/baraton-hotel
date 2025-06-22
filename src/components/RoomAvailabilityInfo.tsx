@@ -13,9 +13,11 @@ interface RoomAvailabilityInfoProps {
 }
 
 const RoomAvailabilityInfo = ({ roomType }: RoomAvailabilityInfoProps) => {
-  const { data: roomStats, isLoading } = useQuery({
+  const { data: roomStats, isLoading, refetch } = useQuery({
     queryKey: ['room-availability', roomType],
     queryFn: async () => {
+      console.log('Fetching room availability for type:', roomType);
+      
       // Get total rooms of this type
       const { data: totalRooms, error: totalError } = await supabase
         .from('rooms')
@@ -23,28 +25,65 @@ const RoomAvailabilityInfo = ({ roomType }: RoomAvailabilityInfoProps) => {
         .eq('type', roomType)
         .eq('is_available', true);
       
-      if (totalError) throw totalError;
+      if (totalError) {
+        console.error('Error fetching total rooms:', totalError);
+        throw totalError;
+      }
 
       // Get currently occupied rooms for today
       const today = new Date().toISOString().split('T')[0];
-      const { data: occupiedRooms, error: occupiedError } = await supabase
+      const { data: occupiedBookings, error: occupiedError } = await supabase
         .from('bookings')
-        .select('room_id, rooms!inner(type)')
+        .select(`
+          room_id,
+          rooms!inner(type)
+        `)
         .eq('rooms.type', roomType)
         .in('status', ['confirmed', 'checked_in'])
         .lte('check_in_date', today)
         .gt('check_out_date', today);
       
-      if (occupiedError) throw occupiedError;
+      if (occupiedError) {
+        console.error('Error fetching occupied rooms:', occupiedError);
+        throw occupiedError;
+      }
 
       const total = totalRooms?.length || 0;
-      const occupied = occupiedRooms?.length || 0;
+      const occupied = occupiedBookings?.length || 0;
       const available = Math.max(0, total - occupied);
+
+      console.log('Room stats:', { roomType, total, occupied, available });
 
       return { total, occupied, available };
     },
-    refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
+    refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
   });
+
+  // Set up real-time subscription for bookings changes
+  React.useEffect(() => {
+    console.log('Setting up real-time subscription for bookings');
+    
+    const channel = supabase
+      .channel('bookings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        (payload) => {
+          console.log('Booking change detected:', payload);
+          refetch(); // Refetch room availability when bookings change
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
 
   if (isLoading || !roomStats) {
     return (
