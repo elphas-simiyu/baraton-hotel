@@ -30,9 +30,13 @@ const Navigation = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-hotel-gold rounded-lg flex items-center justify-center">
-              <span className="text-hotel-navy font-bold text-xl">B</span>
+          <Link to="/" className="flex items-center space-x-3">
+            <div className="w-12 h-12 flex items-center justify-center">
+              <img 
+                src="/lovable-uploads/547b2b10-ce7d-4dc7-8bda-3db21d6e8ef8.png" 
+                alt="University of Eastern Africa, Baraton" 
+                className="w-12 h-12 object-contain"
+              />
             </div>
             <span className="font-bold text-xl text-hotel-navy">Baraton Community</span>
           </Link>
