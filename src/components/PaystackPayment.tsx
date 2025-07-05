@@ -75,9 +75,11 @@ const PaystackPayment = ({ amount, email, bookingData, onSuccess, disabled }: Pa
             room_name: bookingData.roomName || 'Hotel Room'
           },
           callback_url: `${origin}/payment-success`,
-          cancel_url: `${origin}/`
+          cancel_url: `${origin}/`,
+          currency: 'KES'
         }
       });
+
 
       if (error) {
         console.error('Edge function error:', error);
